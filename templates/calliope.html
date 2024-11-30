@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calliope</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        textarea, input, select, button {
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 10px;
+            font-size: 16px;
+        }
+        button {
+            width: auto;
+            padding: 10px 20px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Calliope Interface</h1>
+        <h2>Add Word to Database</h2>
+        <input type="text" id="add-word" placeholder="Enter a word">
+        <button onclick="addWord()">Add Word</button>
+        <div id="add-word-result" class="result"></div>
+
+        <h2>View Database</h2>
+        <select id="view-pos">
+            <option value="">All Parts of Speech</option>
+            <option value="noun">Noun</option>
+            <option value="verb">Verb</option>
+            <option value="adjective">Adjective</option>
+            <option value="adverb">Adverb</option>
+            <option value="other">Other</option>
+        </select>
+        <button onclick="viewDatabase()">View Database</button>
+        <div id="view-database-result" class="result"></div>
+
+        <h2>Predict Blank Word</h2>
+        <textarea id="predict-sentence" placeholder="Enter a sentence with a [BLANK] in place of the predicted word"></textarea>
+        <button onclick="predictBlank()">Predict</button>
+        <div id="predict-result" class="result"></div>
+    </div>
+
+    <script>
+        async function addWord() {
+            const word = document.getElementById('add-word').value.trim();
+            if (!word) {
+                alert('Please enter a word.');
+                return;
+            }
+
+            const response = await fetch('/api/add_word', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ word })
+            });
+            const result = await response.json();
+            document.getElementById('add-word-result').innerText = result.message;
+        }
+
+        async function viewDatabase() {
+            const pos = document.getElementById('view-pos').value;
+            const response = await fetch(`/api/view_database?pos=${pos}`);
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                if (pos) {
+                    const words = result.data.map(word =>
+                        `${word.word} (${word.pos}): [${word.definitions.join(', ')}]`
+                    ).join('\n');
+                    document.getElementById('view-database-result').innerText = words || 'No words found.';
+                } else {
+                    let groupedWords = '';
+                    for (const [category, words] of Object.entries(result.data)) {
+                        groupedWords += `\n=== ${category.toUpperCase()} ===\n`;
+                        groupedWords += words.map(word =>
+                            `${word.word}: [${word.definitions.join(', ')}]`
+                        ).join('\n');
+                    }
+                    document.getElementById('view-database-result').innerText = groupedWords || 'No words found.';
+                }
+            } else {
+                document.getElementById('view-database-result').innerText = 'Error retrieving database.';
+            }
+        }
+
+        async function predictBlank() {
+            const sentence = document.getElementById('predict-sentence').value.trim();
+            if (!sentence.includes('[BLANK]')) {
+                alert("Please include '[BLANK]' in your sentence.");
+                return;
+            }
+
+            const response = await fetch('/api/predict_blank', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sentence })
+            });
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                const predictions = result.predictions.map((p, i) =>
+                    `${i + 1}. ${p.word} (${(p.probability * 100).toFixed(2)}%)`
+                ).join('\n');
+                document.getElementById('predict-result').innerText = predictions || 'No predictions found.';
+            } else {
+                document.getElementById('predict-result').innerText = result.message;
+            }
+        }
+    </script>
+</body>
+</html>
