@@ -1,7 +1,0 @@
-Flask==2.3.3
-spacy==3.6.1
-nltk==3.8.1
-transformers==4.33.2
-torch==2.0.1
-numpy==1.23.5
-https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.6.0/en_core_web_sm-3.6.0.tar.gz
